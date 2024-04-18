@@ -3,7 +3,11 @@ from selenium.webdriver.common.by import By
 # URLS
 BASE_SEARCH_URL = 'https://rivervalleycoop.storebyweb.com/s/1000-1033/b?q={query}&pn={page}'
 
-# Regular expressionns
+# Timers
+BASE_SEARCH_TIMER = 2
+ITEM_PAGE_TIMER = 1
+
+# Regular expressions
 INVENTORY_PATTERN = r'https://rivervalleycoop.storebyweb.com/s/1000-1033/i/INV-1000-\d+$'
 NO_RESULTS_PATTERN = r'No results for \".+\"'
 HAS_RESULTS_PATTERN = r'Showing (\d+) to (\d+) of (\d+) Results'#\n for .+\n \((\d)+ Pages\)'

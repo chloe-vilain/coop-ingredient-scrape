@@ -3,9 +3,11 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
+from abc import ABC, abstractmethod
 
 import re
-from page_object_models import *
+from web_constants import *
+from exceptions import PatternMatchError, RequestOverflowError
 
 import time
 
@@ -17,28 +19,22 @@ MAX_PAGES = 3
 # with a global variable and ensuring it doesn't exceed max allowable amount
 MAX_REQUESTS = 50
 
-class PatternMatchError(Exception):
-    """Exception raised when text does not match any expected regex patterns."""
-    pass
+class BaseWebScraper(ABC):
 
-class RequestOverflowError(Exception):
-    """Exception raised when we are triggering too many requests, risking accidental DOS"""
-    pass
-
-# TODO: refactor using abstract class (ABC)
-class BaseWebScraper:
-
+    @abstractmethod
     def get_item_links(self, query, page):
-        raise NotImplemntedError
+        raise NotImplementedError
 
+    @abstractmethod
     def get_upc(self, url):
-        raise NotImplemntedError
+        raise NotImplementedError
 
+    @abstractmethod
     def get_page(self, url):
-        raise NotImplemntedError
+        raise NotImplementedError
  
 
-class SeleniumWebScraper(BaseWebScraper):
+class SeleniumWebScraper:
 
     def __init__(self):
         self.driver = self.launch_driver()
@@ -72,9 +68,9 @@ class SeleniumWebScraper(BaseWebScraper):
     
     def get_item_links(self, query):
 
-        # First, determin the total count of pages
+        # First, determine the total count of pages
         url = BASE_SEARCH_URL.format(query=query, page=1)
-        self.get_page(url, sleep_timer=2)
+        self.get_page(url, sleep_timer=BASE_SEARCH_TIMER)
         page_count = min(self._get_page_count(), MAX_PAGES)
         if page_count <= 0:
             return []
@@ -104,7 +100,7 @@ class SeleniumWebScraper(BaseWebScraper):
                 break
 
             url = BASE_SEARCH_URL.format(query=query, page=page)
-            self.get_page(url, sleep_timer=2)
+            self.get_page(url, sleep_timer=ITEM_PAGE_TIMER)
 
         print('Matches:', matches)
         print('Unnmatches:', unmatches)
@@ -129,7 +125,6 @@ class SeleniumWebScraper(BaseWebScraper):
     def _get_page_count(self):
         elem = self.driver.find_element(*PAGE_COUNT_TEXT)
         page_text = elem.text.split('\n')[-1]
-        # print('Pages pattern: ', PAGES_PATTERN)
         has_results_match = re.match(PAGES_PATTERN, page_text)
         if has_results_match:
             return int(has_results_match.groups()[0])
@@ -145,3 +140,5 @@ class SeleniumWebScraper(BaseWebScraper):
         upc_code_match = re.match(UPC_CODE_PATTERN, upc_text)
         code = upc_code_match.groups()[0]
         return code
+    
+BaseWebScraper.register(SeleniumWebScraper)
