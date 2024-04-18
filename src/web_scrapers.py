@@ -102,8 +102,8 @@ class SeleniumWebScraper:
             url = BASE_SEARCH_URL.format(query=query, page=page)
             self.get_page(url, sleep_timer=ITEM_PAGE_TIMER)
 
-        print('Matches:', matches)
-        print('Unnmatches:', unmatches)
+        #print('Matches:', matches)
+        #print('Unnmatches:', unmatches)
         
         return matches
 
