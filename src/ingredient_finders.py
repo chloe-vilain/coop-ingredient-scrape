@@ -11,10 +11,6 @@ class BaseIngredientFinder:
     # To be implemented - retrieve data from data stores 
     def get_ingredients_from_database(self, code):
         return None
-    
-    # To be implemented - retrieve data from data stores 
-    def get_product_name_from_database(self, code):
-        return None
 
     def get_ingredients(self, code: str):
         """
@@ -25,7 +21,7 @@ class BaseIngredientFinder:
         for method in self.ingredient_fetch_methods:
             results = method(code)
             if results:
-                return results
+                return results        
 
 class OFFIngredientFinder(BaseIngredientFinder):
     api_url = 'https://world.openfoodfacts.org/api/v3/product/{code}.json'

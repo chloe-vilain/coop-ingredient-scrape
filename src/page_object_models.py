@@ -14,7 +14,6 @@ PAGES_PATTERN = r'\((\d+) Pages\)'
 # List items page
 # todo: this is brittle; consider other options
 PAGE_COUNT_TEXT = (By.XPATH, '/html/body/div[1]/div[1]/section/main/div[2]/div[2]/div[2]/span')#(By.CLASS_NAME, "text-right")
-
 # Detail items page
 UPC_TEXT = (By.CLASS_NAME, "upc")
 DETAILS_LIST = (By.CLASS_NAME, "list-unstyled")
