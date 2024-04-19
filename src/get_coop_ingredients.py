@@ -18,6 +18,7 @@ def main():
     links = scraper.get_item_links(args.food)[:args.count]
     print('Matches:', links)
     codes = []
+    # codes = ['850109005020', '050012101806', '025484000100', '050012102605', '030871302163', '025484000124', '050012104302', '030871401002', '030871000021', '025484000131']
     for link in links:
         codes.append(scraper.get_upc(link))
     ingredient_finder = IngredientFinderV1()

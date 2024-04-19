@@ -23,12 +23,12 @@ You can run the main script from the command line using `poetry run python {loca
 #### Anti-DOS safety checks
 One of the biggest risks of web scraping is inadvertently DOS'ing the host (or issuing too many requests and getting IP-banned). This scenario can occur due to poor design or bugs in the code (while loops and recursion especially are particularly risky due to their ability to go infinite)
 
-To mitigate this risk, I funnel all web & API requests through a specific method, which will check whether the total requests exceed max allowable requests and increment a counter. It will raise an exception if max allowable requests is reached. This design is applied in the `get_page` method for the SeleniumWebScraper class and the `_call_OFF_api` method for the OFFIngredientHelper class. 
+To mitigate this risk, I funnel all web & API requests through a specific method, which will check whether the total requests exceed max allowable requests and increment a counter. It will raise an exception if max allowable requests is reached. This design is applied in the `get_page` method for the SeleniumWebScraper class and the `_request` method for the APIIngredientHelper class. 
 
 #### Ingredient finder multi-source design
 I initially implemented this project using Open Food Facts API to pull ingredients. I quickly discovered that the Open Food Facts database lacks detailed information about many products, and particularly (unsurprisingly) the locally-sourced products available at the Coop.  
 
-With this challenge in mind, I designed the ingredient finder to iterate over multiple possible sources (which sources to use can be defined at the class level) to pull ingredients. Only the OFF API source is implemented today, but this framework can be expanded to support both additional external data sources (such as additional APIs or web scraped data) as well as internal data store lookups. The present implementation will check each source in priority order and return results when it finds a non-empty ingredients list.
+With this challenge in mind, I designed the ingredient finder to iterate over multiple possible sources (which sources to use can be defined at the class level) to pull ingredients. Today, OFF API and Food Data Central APIs are supported, and this framework can be expanded to support both additional external data sources (such as additional APIs or web scraped data) as well as internal data store lookups. The present implementation will check each source in priority order and return results when it finds a non-empty ingredients list.
 
 #### Isolation of locators & URLs
 For web scraping and automated testing, it is useful to isolate HTML locators for reusability and ease of updating. The Page-Object Model design pattern is the classic pattern used for isolating these components -- in this design pattern, each web page has its own class defining the locators and how to access them.
