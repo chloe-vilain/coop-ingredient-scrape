@@ -6,6 +6,7 @@ This project scrapes the River Valley Food Coop's website to identify products m
 #### System requirements
 * Poetry python package manager: https://python-poetry.org/docs/
 * Google Chrome 
+* For FDC data source - you will need to request an API key to pull data from this source. These keys are available to the public from https://fdc.nal.usda.gov/api-key-signup.html. Set this key to FDC_API_KEY env var.
 
 #### Running
 You can run the main script from the command line using `poetry run python {local path}/coop-ingredient-scrape/src/get_coop_ingredients.py {query} -c {count of products to return, optional}` -- for example, `poetry run python ~/code/coop-ingredient-scrape/src/get_coop_ingredients.py 'tofu' -c 10`

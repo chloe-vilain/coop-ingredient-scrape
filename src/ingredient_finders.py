@@ -1,6 +1,7 @@
 import requests
 from exceptions import RequestOverflowError
 from utils.get_secrets import get_secret
+from collections import defaultdict
 
 MAX_REQUESTS = 100
 
@@ -33,92 +34,91 @@ class APIIngredientsHelper:
 class OFFIngredientHelper(APIIngredientsHelper):
     off_api_host = 'https://world.openfoodfacts.org'
     off_api_endpoint = '/api/v3/product/{code}.json'
+    name = "OFFIngredientHelper"
 
-    def get_ingredients_from_OFF_api(self, code: str):
+    def get_data(self, code: str):
+        data = {"name": None, "ingredients": None}
         facts = self._request(self.off_api_host, self.off_api_endpoint.format(code=code))
         if facts:
-            ingredients_list = facts.get('product', {}).get('ingredients', [])
-            ingredients_name_list = [ingredient['text'].upper() for ingredient in ingredients_list]
-            if len(ingredients_name_list) > 0:
-                return ingredients_name_list, "OFF"
-        
-    def get_product_name_from_OFF_api(self, code: str):
-        facts = self._request(self.off_api_host, self.off_api_endpoint.format(code=code))
-        if facts:
-            name = facts.get('product', {}).get('product_name', None)
-            if name:
-                return name, "OFF"
+            product_details = facts.get('product', {})
+            data["name"] = product_details.get('product_name')
+            ingredients = product_details.get('ingredients', None)
+            if ingredients:
+                data["ingredients"] = [ingredient['text'].upper() for ingredient in ingredients]
+        return data
 
 class FDCIngredientHelper(APIIngredientsHelper):
     fdc_api_host = 'https://api.nal.usda.gov'
     fdc_api_endpoint = '/fdc/v1/foods/search?api_key={key}&query={query}'
+    name = "FDCIngredientHelper"
 
-    def get_ingredients_from_FDC_api(self, code, *key_args):
-        """
-        Query the FDC API using the UPC code
-        """
-        api_key = self.fdc_api_key
-        facts = self._request(self.fdc_api_host, self.fdc_api_endpoint.format(key=api_key, query=code))
+    def __init__(self):
+        self.api_key = get_secret("env_var", "FDC_API_KEY")
+
+    def get_data(self, code):
+        data = {"name": None, "ingredients": None}
+        if not self.api_key:
+            print('FDC API Key not available, skipping FDC data source.')
+            return data
+        facts = self._request(self.fdc_api_host, self.fdc_api_endpoint.format(key=self.api_key, query=code))
         all_results = facts.get('foods', [])
-        ingredients = None
         for result in all_results:
             if result.get('gtinUpc') == code:
-                ingredients = result["ingredients"].upper().split(' ')
-                return ingredients, "FDC"
-    
-    def get_name_from_FDC_api(self, code, *key_args):
-        api_key = self.fdc_api_key
-        facts = self._request(self.fdc_api_host, self.fdc_api_endpoint.format(key=api_key, query=code))
-        all_results = facts.get('foods', [])
-        for result in all_results:
-            if result.get('gtinUpc') == code and (brand_name:=result.get("brandName")):
-                return brand_name, "FDC"
+                data["ingredients"] = result["ingredients"].upper().split(' ')
+                data["name"] = result.get("brandName")
+                break
+        return data
         
 
 # Not yet implemented, but included as an example of how we could
 # leverage multiple data sources
 class DatabaseIngredientHelper:
-
-    def get_ingredients_from_database(self, code):
-        return None
+    name = "DBIngredientHelper"
     
-    def get_product_name_from_database(self, code):
-        return None
-        
+    def get_data(self, code):
+        return {"name": None, "ingredients": None}
+    
 class BaseIngredientFinder:
-    # which methods to try to pull ingredients, ordered by
-    # precedence
+    data_helpers = []
+    data = defaultdict(dict)
 
     def __init__(self):
-        self.ingredient_fetch_methods = []
-        self.name_fetch_methods = []
+        self.helpers = [Helper() for Helper in self.data_helpers]
 
-    def get_ingredients(self, code: str):
+    def get_all_data(self, code: str):
         """
-        Iterate over the ingredient_fetch_methods, which are ordered
-        by precedence. Return the first non-null result. Reconciling 
-        multiple results is not currently in scope
+        Retrieve all pertinent data for a given code and update
+        self.data with the results
         """
-        for method in self.ingredient_fetch_methods:
-            results = method(code)
-            if results:
-                return results
-    
-    def get_product_name(self, code):
-        for method in self.name_fetch_methods:
-            results = method(code)
-            if results:
-                return results
+        for helper in self.helpers:
+            self.data[code][helper.name] = helper.get_data(code)
+
+    def reconcile_data(self):
+        """
+        Reconcile data to just a single result per code
+        self.reconcile_data_method is an attribute of the class, so different
+        IngredientFinders can use different methods of reconciliation 
+        """
+        self.reconciled_data = self.reconcile_data_method()
+
+    def _by_order(self):
+        """
+        Reconcile >1 data source available by choosing the first non-null result
+        Order is determined by the order of the data_helpers list
+        """
+        reconciled_data = {}
+        for code, data in self.data.items():
+            reconciled_data[code] = defaultdict(lambda: {"source": None, "value": None})
+            print(data)
+            for helper in self.helpers:
+                if (name:=data[helper.name]["name"]):
+                    reconciled_data[code]["name"] = {"source": helper.name, "value": name}
+                if (ingredients:=data[helper.name]["ingredients"]):
+                    reconciled_data[code]["ingredients"] = {"source": helper.name, "value": ingredients}
+        return reconciled_data
               
-class IngredientFinderV1(BaseIngredientFinder, OFFIngredientHelper, FDCIngredientHelper, DatabaseIngredientHelper):
+class IngredientFinderV1(BaseIngredientFinder):
+    data_helpers = [OFFIngredientHelper, FDCIngredientHelper, DatabaseIngredientHelper]
+    reconcile_data_method = BaseIngredientFinder._by_order
 
-    def __init__(self):
-        super().__init__()
-        self.fdc_api_key = get_secret("env_var", "FDC_API_KEY")
-        self.ingredient_fetch_methods = [self.get_ingredients_from_OFF_api,
-                                         self.get_ingredients_from_FDC_api,
-                                         self.get_ingredients_from_database]
-        self.name_fetch_methods = [self.get_product_name_from_OFF_api,
-                                   self.get_name_from_FDC_api,
-                                   self.get_product_name_from_database]
         
